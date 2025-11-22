@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <!-- 設定視窗寬度與縮放，禁止使用者縮放，讓體驗更像原生 App -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- iOS Safari 專用設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="六點輸入挑戰">
+    
+    <!-- Android / Chrome 專用設定 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f0c29">
+
+    <title>黑暗中的對話:六點輸入的挑戰</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f0c29;
+            --bg-light: #302b63;
+            --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            --text-main: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent-color: #4CAF50;
+            --dot-inactive: #2a2a2a;
+            --dot-active: #ffeb3b;
+            --dot-glow: rgba(255, 235, 59, 0.6);
+            --key-bg: #1e1e1e;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle at center, transparent 0%, #000 90%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .game-container {
+            position: relative;
+            z-index: 1;
+            width: 90%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .screen {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 1;
+            animation: fadeIn 0.5s forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .event-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #fff;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .event-subtitle {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            background: rgba(76, 175, 80, 0.15);
+            padding: 8px 20px;
+            border-radius: 30px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 10px 0 30px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            background: linear-gradient(to right, #fff, #ddd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #welcome-screen p, .level-list {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #ddd;
+            max-width: 600px;
+        }
+
+        .level-list {
+            text-align: left;
+            background: rgba(0,0,0,0.2);
+            padding: 20px 40px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 50px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+            letter-spacing: 1px;
+            margin-top: 20px;
+            min-height: 60px;
+            touch-action: manipulation;
+        }
+
+        button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.6);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #level-title {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        #instruction {
+            color: var(--accent-color);
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            min-height: 1.5em;
+        }
+
+        #challenge-char {
+            font-size: 8rem;
+            font-weight: bold;
+            height: 140px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        .braille-display-wrapper {
+            background: rgba(0,0,0,0.2);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+            min-height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .braille-display-with-numbers {
+            display: flex;
+            align-items: flex-start;
+            gap: 25px;
+        }
+
+        .braille-number-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .braille-number {
+            color: var(--dot-active);
+            font-size: 3rem;
+            font-weight: bold;
+            opacity: 0.9;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.3);
+        }
+
+        .braille-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 70px);
+            grid-template-rows: repeat(3, 70px);
+            gap: 15px;
+            padding: 15px;
+            background: #222;
+            border-radius: 15px;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        .braille-dot {
+            width: 70px;
+            height: 70px;
+            background-color: var(--dot-inactive);
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            position: relative;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+        .braille-dot::after {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            width: 25%;
+            height: 25%;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .braille-dot.active {
+            background-color: var(--dot-active);
+            box-shadow: 0 0 15px var(--dot-glow), 0 0 30px var(--dot-glow), inset 0 -5px 10px rgba(0,0,0,0.2);
+            transform: scale(1.05);
+        }
+
+        #multi-braille-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .mini-grid-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0.5;
+            transform: scale(0.9);
+            transition: all 0.3s;
+        }
+
+        .mini-grid-wrapper.active-challenge {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        
+        .mini-grid-wrapper.active-challenge .zhuyin-label {
+             color: var(--dot-active);
+             text-shadow: 0 0 10px var(--dot-glow);
+        }
+
+        .zhuyin-label {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+
+        .mini-display-with-numbers {
+            display: flex;
+            align-items: flex-start; 
+            gap: 5px;
+        }
+
+        .mini-braille-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 30px);
+            grid-template-rows: repeat(3, 30px);
+            gap: 8px;
+            background: #222;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+        
+        .mini-grid-wrapper.active-challenge .mini-braille-grid {
+            border-color: var(--dot-active);
+            box-shadow: 0 0 15px rgba(255, 235, 59, 0.3);
+        }
+
+        .mini-braille-dot {
+            width: 30px;
+            height: 30px;
+            background-color: #333;
+            border-radius: 50%;
+        }
+
+        .mini-braille-dot.active {
+            background-color: var(--dot-active);
+            box-shadow: 0 0 8px var(--dot-glow);
+        }
+        
+        .mini-number-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 10px;
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .mini-grid-wrapper.active-challenge .mini-number-col {
+            opacity: 1;
+            width: auto; 
+            margin: 0 2px;
+        }
+        
+        .mini-number {
+            color: var(--dot-active);
+            font-size: 1rem;
+            font-weight: bold;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-container.level-2-active .mini-braille-grid {
+             padding: 15px;
+             gap: 12px;
+             grid-template-columns: repeat(2, 40px);
+             grid-template-rows: repeat(3, 40px);
+        }
+        
+        .game-container.level-2-active .mini-braille-dot {
+            width: 40px; height: 40px;
+        }
+        
+        .game-container.level-2-active .mini-number {
+            height: 40px;
+            font-size: 1.2rem;
+        }
+        
+        .game-container.level-2-active .mini-number-col {
+            gap: 12px;
+            padding-top: 15px;
+        }
+
+        #keyboard-visualizer {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .key-vis {
+            width: 65px;
+            height: 80px;
+            background: linear-gradient(to bottom, #3a3a3a, #222);
+            border-radius: 10px;
+            border-bottom: 4px solid #111;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.1s;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+            gap: 0px;
+        }
+
+        .key-vis.pressed {
+            transform: translateY(4px);
+            border-bottom-width: 0;
+            background: linear-gradient(to bottom, #222, #1a1a1a);
+            box-shadow: inset 0 3px 5px rgba(0,0,0,0.5);
+        }
+        
+        .key-vis.pressed .dot-number, 
+        .key-vis.pressed .key-letter {
+            color: var(--dot-active);
+            text-shadow: 0 0 10px var(--dot-glow);
+        }
+
+        .key-vis-spacer {
+            width: 40px;
+        }
+
+        .dot-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            font-family: 'Share Tech Mono', monospace;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .key-letter {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ccc;
+            line-height: 1;
+        }
+        
+        #feedback {
+            height: 40px;
+            margin-top: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        @media (max-height: 800px) {
+            .game-container { padding: 20px; }
+            #challenge-char { height: 100px; font-size: 6rem; }
+            .braille-display-wrapper { padding: 15px; min-height: 180px; }
+            .braille-dot { width: 50px; height: 50px; }
+            .braille-grid { grid-template-columns: repeat(2, 50px); grid-template-rows: repeat(3, 50px); }
+            .key-vis { width: 50px; height: 65px; }
+            .braille-number { font-size: 2rem; height: 50px; }
+            .braille-number-col { gap: 15px; padding-top: 15px; padding-bottom: 15px; }
+            .key-letter, .dot-number { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="welcome-screen" class="screen active">
+            <div class="event-title">國立彰化特殊教育學校身心障礙宣導周</div>
+            <div class="event-subtitle">視障組體驗</div>
+            <h1>黑暗中的對話<br><span style="font-size:0.6em; color:#888;">六點輸入挑戰</span></h1>
+            
+            <p>透過鍵盤上的六個按鍵，模擬點字機的操作。</p>
+            <ol class="level-list">
+                <li><strong>注音練習：</strong> 熟悉基本點字代碼</li>
+                <li><strong>國字試煉：</strong> 挑戰拼出完整的國字</li>
+                <li><strong>視讀挑戰：</strong> 聽點位提示，輸入後聽發音</li>
+            </ol>
+            
+            <button id="start-btn">開始挑戰</button>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <div id="level-title"></div>
+            <h2 id="instruction"></h2>
+            
+            <div id="challenge-char"></div>
+            
+            <div class="braille-display-wrapper">
+                <div id="single-braille-display-container" class="braille-display-with-numbers">
+                    <div class="braille-number-col">
+                        <span class="braille-number">1</span>
+                        <span class="braille-number">2</span>
+                        <span class="braille-number">3</span>
+                    </div>
+                    <div class="braille-grid">
+                        <div class="braille-dot"></div><div class="braille-dot"></div>
+                        <div class="braille-dot"></div><div class="braille-dot"></div>
+                        <div class="braille-dot"></div><div class="braille-dot"></div>
+                    </div>
+                    <div class="braille-number-col">
+                        <span class="braille-number">4</span>
+                        <span class="braille-number">5</span>
+                        <span class="braille-number">6</span>
+                    </div>
+                </div>
+                
+                <div id="multi-braille-container"></div>
+            </div>
+
+            <div id="feedback"></div>
+            
+            <div id="keyboard-visualizer">
+                <div class="key-vis" data-key="s">
+                    <span class="dot-number">3</span>
+                    <span class="key-letter">S</span>
+                </div>
+                <div class="key-vis" data-key="d">
+                    <span class="dot-number">2</span>
+                    <span class="key-letter">D</span>
+                </div>
+                <div class="key-vis" data-key="f">
+                    <span class="dot-number">1</span>
+                    <span class="key-letter">F</span>
+                </div>
+                
+                <div class="key-vis-spacer"></div>
+                
+                <div class="key-vis" data-key="j">
+                    <span class="dot-number">4</span>
+                    <span class="key-letter">J</span>
+                </div>
+                <div class="key-vis" data-key="k">
+                    <span class="dot-number">5</span>
+                    <span class="key-letter">K</span>
+                </div>
+                <div class="key-vis" data-key="l">
+                    <span class="dot-number">6</span>
+                    <span class="key-letter">L</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.querySelector('.game-container');
+        const screens = document.querySelectorAll('.screen');
+        const startBtn = document.getElementById('start-btn');
+        const gameScreen = document.getElementById('game-screen');
+        const levelTitle = document.getElementById('level-title');
+        const instruction = document.getElementById('instruction');
+        const challengeChar = document.getElementById('challenge-char');
+        const singleBrailleDisplayContainer = document.getElementById('single-braille-display-container');
+        const singleBrailleGrid = gameScreen.querySelector('.braille-grid');
+        const multiBrailleContainer = document.getElementById('multi-braille-container');
+        const feedback = document.getElementById('feedback');
+        
+        // --- 全域音訊環境 (Web Audio API) ---
+        let audioCtx;
+
+        // 初始化音訊環境 (必須在使用者互動下觸發)
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // --- 生成勝利和弦 (Victory Chord) - 推薦方案 2 ---
+        function playSynthesizedVictory() {
+            if (!audioCtx) initAudio();
+            const now = audioCtx.currentTime;
+            
+            // C Major Chord (C, E, G, C) - Victory/Level Up style
+            const frequencies = [523.25, 659.25, 783.99, 1046.50];
+
+            frequencies.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                osc.type = 'triangle'; // 三角波，聲音比較像電子琴
+                osc.frequency.value = freq;
+                
+                // 稍微錯開一點點時間，製造刷弦感
+                const startTime = now + (index * 0.05);
+                const duration = 0.8; // Slightly longer sustain
+
+                // Volume Boost: increased to 0.6 for louder sound
+                gainNode.gain.setValueAtTime(0.6, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.01, startTime + duration);
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                osc.start(startTime);
+                osc.stop(startTime + duration + 0.1);
+            });
+        }
+        
+        const brailleMap = {
+            'ㄅ': [1,3,5], 'ㄆ': [1,2,3,4], 'ㄇ': [1,3,4], 'ㄈ': [1,2,3,4,5], 'ㄉ': [1,4,5], 'ㄊ': [1,2,4], 'ㄋ': [1,3,4,5], 'ㄌ': [1,2], 'ㄍ': [1,3], 'ㄎ': [1,2,3], 'ㄏ': [1,2,3,5], 'ㄐ': [1,3], 'ㄑ': [2,4,5], 'ㄒ': [1,5], 'ㄓ': [1], 'ㄔ': [1,2], 'ㄕ': [2,4], 'ㄖ': [1,2,4,5], 'ㄗ': [1,2,5], 'ㄘ': [2,4,5], 'ㄙ': [1,5], 
+            'ㄧ': [1,6], 'ㄨ': [3,4], 'ㄩ': [1,2,5,6], 
+            'ㄚ': [3,4,5], 'ㄛ': [1,2,6], 'ㄜ': [2,3,4,6], 'ㄝ': [2,6], 'ㄞ': [2,4,5,6], 'ㄟ': [3,5,6], 'ㄠ': [1,4,6], 'ㄡ': [1,2,3,5,6], 'ㄢ': [1,2,3,6], 'ㄣ': [1,3,6], 'ㄤ': [1,3,4,6], 'ㄥ': [1,3,5,6], 'ㄦ': [1,5,6],
+            'ㄧㄚ': [2,3,4,5,6], 'ㄧㄝ': [3,4,6], 'ㄧㄠ': [2,4,6], 'ㄧㄡ': [2,3,4], 'ㄧㄢ': [2,3,4,5], 'ㄧㄣ': [1,4,5,6], 'ㄧㄤ': [4,6], 'ㄧㄥ': [1,3,4,5,6], 'ㄧㄛ': [3,5,6],'ㄧㄞ': [2,6],
+            'ㄨㄚ': [3,5], 'ㄨㄛ': [2,5], 'ㄨㄞ': [2,3,5,6], 'ㄨㄟ': [1,2,4,6], 'ㄨㄢ': [1,2,4,5,6], 'ㄨㄣ': [1,2,3,4,5,6], 'ㄨㄤ': [4,5,6], 'ㄨㄥ': [1,2,3,4,6],
+            'ㄩㄝ': [2,3,6], 'ㄩㄢ': [4,5], 'ㄩㄣ': [2,5,6], 'ㄩㄥ': [2,3,5],
+            'ˉ': [3], 'ˊ': [2], 'ˇ': [4], 'ˋ': [5], '˙': [1],
+        };
+        
+        const keyToDotMap = { 'f': 1, 'd': 2, 's': 3, 'j': 4, 'k': 5, 'l': 6 };
+        
+        // --- 聲調發音對照表 ---
+        // 修正：為避免 Google TTS 讀成「兩聲」，2聲必須使用中文字「二」
+        // 其他聲調維持使用阿拉伯數字
+        const toneMap = {
+            'ˉ': '1聲',
+            'ˊ': '二聲', // 強制讀 "Er Sheng"
+            'ˇ': '3聲',
+            'ˋ': '4聲',
+            '˙': '輕聲'
+        };
+        
+        const pronunciationFallback = {
+            'ㄛ': '喔', 'ㄜ': '鵝', 'ㄝ': '耶', 
+            'ㄞ': '哀', 'ㄟ': '欸', 'ㄠ': '熬', 'ㄡ': '歐', 
+            'ㄢ': '安', 'ㄣ': '恩', 'ㄤ': '昂', 'ㄥ': '亨', 'ㄦ': '兒'
+        };
+        
+        const visualKeyMap = new Map();
+        document.querySelectorAll('.key-vis').forEach(keyEl => {
+            visualKeyMap.set(keyEl.dataset.key, keyEl);
+        });
+
+        const levels = [
+            { title: "第 1 關：注音練習", type: "chars", count: 5, isVisual: true, content: [] },
+            { title: "第 2 關：國字試煉", type: "words", count: 4, isVisual: true, content: [] },
+            { title: "第 3 關：視讀挑戰", type: "chars", count: 5, isVisual: true, content: [] }
+        ];
+
+        const allSymbols = Object.keys(brailleMap);
+        const zhuyinPhonetics = allSymbols.filter(char => !['ˉ', 'ˊ', 'ˇ', 'ˋ', '˙'].includes(char)); 
+        
+        const wordBank = [
+            { display: "愛", input: "ㄞˋ" }, { display: "安", input: "ㄢˉ" }, { display: "八", input: "ㄅㄚˉ" }, { display: "爸", input: "ㄅㄚˋ" }, { display: "白", input: "ㄅㄞˊ" },
+            { display: "百", input: "ㄅㄞˇ" }, { display: "班", input: "ㄅㄢˉ" }, { display: "幫", input: "ㄅㄤˉ" }, { display: "包", input: "ㄅㄠˉ" }, { display: "杯", input: "ㄅㄟˉ" },
+            { display: "本", input: "ㄅㄣˇ" }, { display: "鼻", input: "ㄅㄧˊ" }, { display: "筆", input: "ㄅㄧˇ" }, { display: "邊", input: "ㄅㄧㄢˉ" }, { display: "冰", input: "ㄅㄧㄥˉ" },
+            { display: "不", input: "ㄅㄨˊ" }, { display: "菜", input: "ㄘㄞˋ" }, { display: "茶", input: "ㄔㄚˊ" }, { display: "長", input: "ㄔㄤˊ" }, { display: "唱", input: "ㄔㄤˋ" },
+            { display: "車", input: "ㄔㄜˉ" }, { display: "吃", input: "ㄔˉ" }, { display: "出", input: "ㄔㄨˉ" }, { display: "穿", input: "ㄔㄨㄢˉ" }, { display: "床", input: "ㄔㄨㄤˊ" },
+            { display: "次", input: "ㄘˋ" }, { display: "大", input: "ㄉㄚˋ" }, { display: "蛋", input: "ㄉㄢˋ" }, { display: "到", input: "ㄉㄠˋ" }, { display: "的", input: "ㄉㄜ˙" }, 
+            { display: "點", input: "ㄉㄧㄢˇ" }, { display: "電", input: "ㄉㄧㄢˋ" }, { display: "東", input: "ㄉㄨㄥˉ" }, { display: "讀", input: "ㄉㄨˊ" }, { display: "對", input: "ㄉㄨㄟˋ" },
+            { display: "多", input: "ㄉㄨㄛˉ" }, { display: "兒", input: "ㄦˊ" }, { display: "耳", input: "ㄦˇ" }, { display: "二", input: "ㄦˋ" }, { display: "飯", input: "ㄈㄢˋ" },
+            { display: "飛", input: "ㄈㄟˉ" }, { display: "風", input: "ㄈㄥˉ" }, { display: "狗", input: "ㄍㄡˇ" }, { display: "哥", input: "ㄍㄜˉ" }, { display: "給", input: "ㄍㄟˇ" },
+            { display: "公", input: "ㄍㄨㄥˉ" }, { display: "光", input: "ㄍㄨㄤˉ" }, { display: "國", input: "ㄍㄨㄛˊ" }, { display: "果", input: "ㄍㄨㄛˇ" }, { display: "好", input: "ㄏㄠˇ" },
+            { display: "喝", input: "ㄏㄜˉ" }, { display: "和", input: "ㄏㄢˋ" }, { display: "黑", input: "ㄏㄟˉ" }, { display: "紅", input: "ㄏㄨㄥˊ" }, { display: "後", input: "ㄏㄡˋ" },
+            { display: "花", input: "ㄏㄨㄚˉ" }, { display: "畫", input: "ㄏㄨㄚˋ" }, { display: "黃", input: "ㄏㄨㄤˊ" }, { display: "回", input: "ㄏㄨㄟˊ" }, { display: "火", input: "ㄏㄨㄛˇ" },
+            { display: "雞", input: "ㄐㄧˉ" }, { display: "家", input: "ㄐㄧㄚˉ" }, { display: "見", input: "ㄐㄧㄢˋ" }, { display: "腳", input: "ㄐㄧㄠˇ" }, { display: "叫", input: "ㄐㄧㄠˋ" },
+            { display: "今", input: "ㄐㄧㄣˉ" }, { display: "九", input: "ㄐㄧㄡˇ" }, { display: "就", input: "ㄐㄧㄡˋ" }, { display: "覺", input: "ㄐㄩㄝˊ" }, { display: "開", input: "ㄎㄞˉ" },
+            { display: "看", input: "ㄎㄢˋ" }, { display: "課", input: "ㄎㄜˋ" }, { display: "口", input: "ㄎㄡˇ" }, { display: "哭", input: "ㄎㄨˉ" }, { display: "褲", input: "ㄎㄨˋ" },
+            { display: "快", input: "ㄎㄨㄞˋ" }, { display: "來", input: "ㄌㄞˊ" }, { display: "藍", input: "ㄌㄢˊ" }, { display: "老", input: "ㄌㄠˇ" }, { display: "樂", input: "ㄌㄜˋ" },
+            { display: "冷", input: "ㄌㄥˇ" }, { display: "裡", input: "ㄌㄧˇ" }, { display: "臉", input: "ㄌㄧㄢˇ" }, { display: "亮", input: "ㄌㄧㄤˋ" }, { display: "兩", input: "ㄌㄧㄤˇ" },
+            { display: "綠", input: "ㄌㄩˋ" }, { display: "媽", input: "ㄇㄚˉ" }, { display: "買", input: "ㄇㄞˇ" }, { display: "貓", input: "ㄇㄠˉ" }, { display: "妹", input: "ㄇㄟˋ" },
+            { display: "門", input: "ㄇㄣˊ" }, { display: "米", input: "ㄇㄧˇ" }, { display: "面", input: "ㄇㄧㄢˋ" }, { display: "名", input: "ㄇㄧㄥˊ" }, { display: "木", input: "ㄇㄨˋ" },
+            { display: "奶", input: "ㄋㄞˇ" }, { display: "腦", input: "ㄋㄠˇ" }, { display: "呢", input: "ㄋㄜ˙" }, 
+            { display: "你", input: "ㄋㄧˇ" }, { display: "年", input: "ㄋㄧㄢˊ" },
+            { display: "鳥", input: "ㄋㄧㄠˇ" }, { display: "牛", input: "ㄋㄧㄡˊ" }, { display: "女", input: "ㄋㄩˇ" }, { display: "胖", input: "ㄆㄤˋ" }, { display: "跑", input: "ㄆㄠˇ" },
+            { display: "朋", input: "ㄆㄥˊ" }, { display: "皮", input: "ㄆㄧˊ" }, { display: "平", input: "ㄆㄧㄥˊ" }, { display: "七", input: "ㄑㄧˉ" }, { display: "奇", input: "ㄑㄧˊ" },
+            { display: "錢", input: "ㄑㄧㄢˊ" }, { display: "前", input: "ㄑㄧㄢˊ" }, { display: "請", input: "ㄑㄧㄥˇ" }, { display: "球", input: "ㄑㄧㄡˊ" }, { display: "去", input: "ㄑㄩˋ" },
+            { display: "拳", input: "ㄑㄩㄢˊ" }, { display: "人", input: "ㄖㄣˊ" }, { display: "日", input: "ㄖˋ" }, { display: "肉", input: "ㄖㄡˋ" }, { display: "三", input: "ㄙㄢˉ" },
+            { display: "山", input: "ㄕㄢˉ" }, { display: "上", input: "ㄕㄤˋ" }, { display: "少", input: "ㄕㄠˇ" }, { display: "誰", input: "ㄕㄟˊ" }, { display: "身", input: "ㄕㄣˉ" },
+            { display: "生", input: "ㄕㄥˉ" }, { display: "十", input: "ㄕˊ" }, { display: "是", input: "ㄕˋ" }, { display: "手", input: "ㄕㄡˇ" }, { display: "書", input: "ㄕㄨˉ" },
+            { display: "樹", input: "ㄕㄨˋ" }, { display: "水", input: "ㄕㄨㄟˇ" }, { display: "說", input: "ㄕㄨㄛˉ" }, { display: "四", input: "ㄙˋ" }, { display: "他", input: "ㄊㄚˉ" },
+            { display: "它", input: "ㄊㄚˉ" }, { display: "太", input: "ㄊㄞˋ" }, { display: "天", input: "ㄊㄧㄢˉ" }, { display: "田", input: "ㄊㄧㄢˊ" }, { display: "聽", input: "ㄊㄧㄥˉ" },
+            { display: "頭", input: "ㄊㄡˊ" }, { display: "土", input: "ㄊㄨˇ" }, { display: "玩", input: "ㄨㄢˊ" }, { display: "晚", input: "ㄨㄢˇ" }, { display: "我", input: "ㄨㄛˇ" },
+            { display: "五", input: "ㄨˇ" }, { display: "西", input: "ㄒㄧˉ" }, { display: "下", input: "ㄒㄧㄚˋ" }, { display: "先", input: "ㄒㄧㄢˉ" }, { display: "小", input: "ㄒㄧㄠˇ" },
+            { display: "笑", input: "ㄒㄧㄠˋ" }, { display: "謝", input: "ㄒㄧㄝˋ" }, { display: "心", input: "ㄒㄧㄣˉ" }, { display: "星", input: "ㄒㄧㄥˉ" }, { display: "學", input: "ㄒㄩㄝˊ" },
+            { display: "牙", input: "ㄧㄚˊ" }, { display: "眼", input: "ㄧㄢˇ" }, { display: "陽", input: "ㄧㄤˊ" }, { display: "藥", input: "ㄧㄠˋ" }, { display: "也", input: "ㄧㄝˇ" },
+            { display: "一", input: "ㄧˉ" }, { display: "衣", input: "ㄧˉ" }, { display: "音", input: "ㄧㄣˉ" }, { display: "右", input: "ㄧㄡˋ" }, { display: "雨", input: "ㄩˇ" },
+            { display: "圓", input: "ㄩㄢˊ" }, { display: "月", input: "ㄩㄝˋ" }, { display: "雲", input: "ㄩㄣˊ" }, { display: "再", input: "ㄗㄞˋ" }, { display: "早", input: "ㄗㄠˇ" },
+            { display: "張", input: "ㄓㄤˉ" }, { display: "找", input: "ㄓㄠˇ" }, { display: "這", input: "ㄓㄜˋ" }, { display: "中", input: "ㄓㄨㄥˉ" }, { display: "字", input: "ㄗˋ" }
+        ];
+
+        let gameState = {
+            level: 0, challengeIndex: 0, wordChallengeIndex: 0, currentWordSequence: [],
+            currentChord: new Set(), synth: window.speechSynthesis, isListening: false
+        };
+
+        // 瀏覽器機械音 (System TTS)
+        function speakBrowser(text, callback) {
+            if (gameState.synth.speaking) { gameState.synth.cancel(); }
+            const textToSpeak = pronunciationFallback[text] || text;
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 0.9;
+            utterance.onend = () => { if (callback) callback(); };
+            gameState.synth.speak(utterance);
+        }
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        function generateLevels() {
+            shuffleArray(zhuyinPhonetics);
+            levels[0].content = zhuyinPhonetics.slice(0, levels[0].count);
+            const level3Pool = zhuyinPhonetics.slice(levels[0].count, levels[0].count + levels[2].count);
+            levels[2].content = level3Pool;
+            shuffleArray(wordBank);
+            levels[1].content = wordBank.slice(0, levels[1].count);
+        }
+
+        function parseZhuyin(inputStr) {
+            const result = [];
+            let i = 0;
+            const sortedBrailleKeys = Object.keys(brailleMap).sort((a, b) => b.length - a.length);
+            while (i < inputStr.length) {
+                let found = false;
+                for (const key of sortedBrailleKeys) {
+                    if (inputStr.startsWith(key, i)) {
+                        result.push(key);
+                        i += key.length;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) { i++; }
+            }
+            return result;
+        }
+        
+        function speak(text, callback) {
+            // 1. "闖關成功" 強制使用機械音
+            if (text === "闖關成功") {
+                speakBrowser(text, callback);
+                return;
+            }
+
+            // 2. 聲調符號轉換為口語
+            const spokenText = toneMap[text] || text;
+
+            // 3. 單字、注音、聲調使用 Google 自然語音
+            if (allSymbols.includes(text) || Object.values(toneMap).includes(spokenText) || spokenText.length <= 4) {
+                const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=zh-TW&q=${encodeURIComponent(spokenText)}`;
+                const audio = new Audio(audioUrl);
+                audio.onended = () => { if (callback) callback(); };
+                audio.onerror = () => { speakBrowser(spokenText, callback); };
+                audio.play().catch(e => { speakBrowser(spokenText, callback); });
+            } else {
+                speakBrowser(spokenText, callback);
+            }
+        }
+
+        // --- 核心邏輯：通關處理 ---
+        function handleVictory() {
+            // 使用合成音播放馬力歐旋律，保證有聲音
+            playSynthesizedVictory();
+            
+            // 機械音唸出
+            speak("闖關成功");
+            
+            // 顯示畫面
+            endGame();
+        }
+
+        function switchScreen(screenId) {
+            screens.forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function setupLevel() {
+            const currentLevel = levels[gameState.level];
+            levelTitle.textContent = currentLevel.title;
+            gameState.challengeIndex = 0;
+            nextChallenge();
+        }
+
+        function nextChallenge() {
+            gameContainer.classList.remove('level-2-active');
+            feedback.textContent = '';
+            gameState.currentChord.clear();
+            
+            // 通關檢查
+            if (gameState.level >= levels.length) { 
+                handleVictory();
+                return;
+            }
+            
+            const currentLevel = levels[gameState.level];
+            if (gameState.challengeIndex >= currentLevel.content.length) {
+                gameState.level++;
+                if (gameState.level < levels.length) { 
+                    speak("很好，進入下一關。", setupLevel); 
+                } else { 
+                    handleVictory();
+                }
+                return;
+            }
+
+            const challengeItem = currentLevel.content[gameState.challengeIndex];
+            instruction.textContent = "請直接按下對應的按鍵組合";
+            let prompt_text = "";
+
+            if (currentLevel.type === "words") {
+                gameContainer.classList.add('level-2-active');
+                singleBrailleDisplayContainer.style.display = 'none';
+                multiBrailleContainer.style.display = 'flex';
+                multiBrailleContainer.innerHTML = '';
+                gameState.currentWordSequence = parseZhuyin(challengeItem.input);
+                gameState.wordChallengeIndex = 0;
+                challengeChar.textContent = challengeItem.display;
+                
+                for (const zhuyinChar of gameState.currentWordSequence) {
+                    const dots = brailleMap[zhuyinChar] || [];
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'mini-grid-wrapper';
+                    const charLabel = document.createElement('div');
+                    charLabel.className = 'zhuyin-label';
+                    charLabel.textContent = zhuyinChar;
+                    const displayContainer = document.createElement('div');
+                    displayContainer.className = 'mini-display-with-numbers';
+                    const leftCol = document.createElement('div');
+                    leftCol.className = 'mini-number-col';
+                    [1, 2, 3].forEach(num => { const s = document.createElement('span'); s.className = 'mini-number'; s.textContent = num; leftCol.appendChild(s); });
+                    const grid = document.createElement('div');
+                    grid.className = 'mini-braille-grid';
+                    const dotOrder = [1, 4, 2, 5, 3, 6];
+                    for (const dotNum of dotOrder) {
+                        const d = document.createElement('div');
+                        d.className = 'mini-braille-dot';
+                        if (dots.includes(dotNum)) d.classList.add('active');
+                        grid.appendChild(d);
+                    }
+                    const rightCol = document.createElement('div');
+                    rightCol.className = 'mini-number-col';
+                    [4, 5, 6].forEach(num => { const s = document.createElement('span'); s.className = 'mini-number'; s.textContent = num; rightCol.appendChild(s); });
+                    displayContainer.appendChild(leftCol); displayContainer.appendChild(grid); displayContainer.appendChild(rightCol);
+                    wrapper.appendChild(charLabel); wrapper.appendChild(displayContainer);
+                    multiBrailleContainer.appendChild(wrapper);
+                }
+
+                multiBrailleContainer.children[0].classList.add('active-challenge');
+                prompt_text = `請輸入 ${challengeItem.display}`;
+            } else { 
+                singleBrailleDisplayContainer.style.display = 'flex';
+                multiBrailleContainer.style.display = 'none';
+                challengeChar.textContent = challengeItem;
+                const dots = brailleMap[challengeItem];
+                singleBrailleGrid.querySelectorAll('.braille-dot').forEach((dot, idx) => {
+                    const dotNum = [1, 4, 2, 5, 3, 6][idx];
+                    dot.classList.toggle('active', dots.includes(dotNum));
+                });
+                
+                if (gameState.level === 2) { 
+                    const dotString = dots.join('、');
+                    prompt_text = `請輸入，點 ${dotString}`;
+                    instruction.textContent = "聽點位提示，輸入後聽發音";
+                } else { 
+                    prompt_text = `請輸入 ${challengeItem}。`;
+                }
+            }
+
+            if (prompt_text) {
+                speak(prompt_text);
+            }
+            gameState.isListening = true;
+        }
+        
+        function handleCorrectInput(targetChar) {
+            feedback.textContent = `正確！`;
+            const currentLevel = levels[gameState.level];
+
+            if (currentLevel.type === "words") {
+                const isFinalPart = gameState.wordChallengeIndex + 1 >= gameState.currentWordSequence.length;
+                if (isFinalPart) {
+                    speak(targetChar, () => {
+                        const wordDisplay = challengeChar.textContent;
+                        speak(`${wordDisplay}, 正確！`, () => {
+                            gameState.challengeIndex++;
+                            setTimeout(nextChallenge, 150);
+                        });
+                    });
+                } else {
+                    // 自然語音唸出：1聲、2聲...
+                    speak(targetChar); 
+                    multiBrailleContainer.children[gameState.wordChallengeIndex].classList.remove('active-challenge');
+                    gameState.wordChallengeIndex++;
+                    multiBrailleContainer.children[gameState.wordChallengeIndex].classList.add('active-challenge');
+                    gameState.isListening = true; 
+                    setTimeout(() => { feedback.textContent = ''; }, 500);
+                }
+            } else {
+                speak(targetChar, () => {
+                    gameState.challengeIndex++;
+                    setTimeout(nextChallenge, 150);
+                });
+            }
+        }
+        
+        function endGame() {
+            switchScreen('welcome-screen');
+            document.querySelector('#welcome-screen h1').innerHTML = "挑戰完成！";
+            document.querySelector('#welcome-screen p').textContent = "恭喜你完成了所有關卡！點擊按鈕即可再次挑戰。";
+            document.getElementById('start-btn').textContent = "再次挑戰";
+            gameState.isListening = false;
+        }
+        
+        startBtn.addEventListener('click', () => {
+            // 點擊時初始化 AudioContext
+            initAudio();
+            
+            generateLevels();
+            switchScreen('game-screen');
+            gameState.level = 0;
+            speak('遊戲開始', () => {
+                setTimeout(() => {
+                    setupLevel();
+                }, 100);
+            });
+        });
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (visualKeyMap.has(key)) {
+                visualKeyMap.get(key).classList.add('pressed');
+            }
+
+            if (!gameState.isListening) return;
+            
+            if (keyToDotMap[key]) {
+                gameState.currentChord.add(key);
+                const currentLevel = levels[gameState.level];
+                let targetChar;
+                if (currentLevel.type === 'words') {
+                    targetChar = gameState.currentWordSequence[gameState.wordChallengeIndex];
+                } else {
+                    targetChar = currentLevel.content[gameState.challengeIndex];
+                }
+                const correctDots = brailleMap[targetChar];
+                if (!correctDots) return;
+                const sortedInputDots = Array.from(gameState.currentChord).map(k => keyToDotMap[k]).sort((a, b) => a - b);
+                if (JSON.stringify(sortedInputDots) === JSON.stringify(correctDots)) {
+                    gameState.isListening = false;
+                    handleCorrectInput(targetChar);
+                }
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (visualKeyMap.has(key)) {
+                visualKeyMap.get(key).classList.remove('pressed');
+            }
+
+            if (keyToDotMap[key] && gameState.isListening) {
+                gameState.currentChord.clear();
+            }
+        });
+    </script>
+</body>
+</html>
