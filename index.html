@@ -212,6 +212,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: opacity 0.3s; /* 增加過渡效果 */
         }
 
         .braille-display-with-numbers {
@@ -755,7 +756,7 @@
                 voiceStatus.style.color = '#00ff88';
             } else if (zhTwVoice) {
                 gameState.voice = zhTwVoice;
-                gameState.usingMicrosoft = false; // 非微軟自然語音，可能效果不好，會觸發 Google Fallback
+                gameState.usingMicrosoft = false; 
                 voiceStatus.textContent = "未偵測到微軟自然語音 (使用備用方案)";
                 voiceStatus.style.color = '#ffeb3b';
             } else {
@@ -854,10 +855,6 @@
             // 優先使用結合韻對照表，確保唸出單一音節；其次是聲調轉換；最後是原音
             let speakText = compoundRhymeMap[text] || toneMap[text] || text;
             
-            // 判斷策略：
-            // 1. 如果有偵測到微軟自然語音 (HsiaoChen/YunJhe)，優先使用 speakNative (延遲低、音質好、原音準)
-            // 2. 如果沒有微軟語音，則使用 speakGoogle (單軌)
-            
             if (gameState.usingMicrosoft) {
                 speakNative(speakText, callback);
             } else {
@@ -883,7 +880,16 @@
                 return;
             }
             const currentLevel = levels[gameState.level];
-            const progress = (gameState.challengeIndex / currentLevel.content.length) * 100;
+            let progress = 0;
+
+            // 針對第二關(words)：將 "目前的單字進度" 加入總進度計算
+            if (currentLevel.type === 'words' && gameState.currentWordSequence && gameState.currentWordSequence.length > 0) {
+                const subWordProgress = gameState.wordChallengeIndex / gameState.currentWordSequence.length;
+                progress = ((gameState.challengeIndex + subWordProgress) / currentLevel.content.length) * 100;
+            } else {
+                progress = (gameState.challengeIndex / currentLevel.content.length) * 100;
+            }
+
             progressFill.style.width = `${progress}%`;
         }
 
@@ -891,6 +897,9 @@
             const currentLevel = levels[gameState.level];
             levelTitle.textContent = currentLevel.title;
             gameState.challengeIndex = 0;
+            gameState.wordChallengeIndex = 0; 
+            // 恢復顯示區域
+            document.querySelector('.braille-display-wrapper').style.opacity = '1';
             updateProgressBar(); 
             nextChallenge();
         }
@@ -906,16 +915,34 @@
             }
             
             const currentLevel = levels[gameState.level];
+            
+            // 檢查是否關卡結束
             if (gameState.challengeIndex >= currentLevel.content.length) {
-                gameState.level++;
-                updateProgressBar();
-                if (gameState.level < levels.length) { 
-                    speak("很好，進入下一關。", setupLevel);
+                // 強制進度條滿格，避免倒退
+                progressFill.style.width = '100%';
+                
+                // 清空畫面避免殘影
+                challengeChar.textContent = "";
+                singleBrailleDisplayContainer.style.display = 'none';
+                multiBrailleContainer.style.display = 'none';
+                instruction.textContent = "";
+                feedback.textContent = "";
+
+                if (gameState.level + 1 < levels.length) { 
+                    speak("很好，進入下一關。", () => {
+                        // 語音結束後才切換關卡
+                        gameState.level++;
+                        setupLevel();
+                    });
                 } else { 
                     handleVictory();
                 }
                 return;
             }
+
+            // --- 正常題目顯示邏輯 ---
+            // 確保顯示容器可見
+            document.querySelector('.braille-display-wrapper').style.opacity = '1';
 
             const challengeItem = currentLevel.content[gameState.challengeIndex];
             instruction.textContent = "請直接按下對應的按鍵組合";
@@ -978,6 +1005,9 @@
                 }
             }
 
+            // 更新進度條
+            updateProgressBar();
+
             if (prompt_text) {
                 speak(prompt_text);
             }
@@ -995,6 +1025,8 @@
                         const wordDisplay = challengeChar.textContent;
                         speak(`${wordDisplay}, 正確！`, () => {
                             gameState.challengeIndex++;
+                            // 完成一個字後，重置子進度並更新
+                            gameState.wordChallengeIndex = 0; 
                             updateProgressBar(); 
                             setTimeout(nextChallenge, 150);
                         });
@@ -1004,6 +1036,7 @@
                     multiBrailleContainer.children[gameState.wordChallengeIndex].classList.remove('active-challenge');
                     gameState.wordChallengeIndex++;
                     multiBrailleContainer.children[gameState.wordChallengeIndex].classList.add('active-challenge');
+                    updateProgressBar();
                     gameState.isListening = true; 
                     setTimeout(() => { feedback.textContent = ''; }, 500);
                 }
