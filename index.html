@@ -164,7 +164,7 @@
             transition: transform 0.2s, box-shadow 0.2s;
             box-shadow: 0 5px 15px rgba(0, 180, 219, 0.4);
             letter-spacing: 1px;
-            margin-top: 20px;
+            margin-top: 10px;
             min-height: 60px;
             touch-action: manipulation;
         }
@@ -463,19 +463,6 @@
             color: var(--accent-color);
             text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
         }
-
-        /* 語音狀態指示 */
-        #voice-status {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            background: rgba(0,0,0,0.3);
-            padding: 5px 10px;
-            border-radius: 15px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
         
         /* 過場動畫容器 (文字特效版) */
         #transition-overlay {
@@ -491,7 +478,7 @@
             z-index: 2000;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.25s; /* 修改：縮短淡入淡出時間 */
+            transition: opacity 0.25s; /* 縮短淡入淡出時間 */
             backdrop-filter: blur(5px); /* 毛玻璃效果 */
         }
         #transition-overlay.show {
@@ -511,7 +498,7 @@
         
         /* 啟動動畫時的樣式 */
         #transition-overlay.show .transition-content {
-            animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; /* 修改：縮短動畫時間 */
+            animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; /* 縮短動畫時間 */
         }
 
         @keyframes zoomIn {
@@ -576,9 +563,9 @@
     </div>
 
     <div class="game-container">
-        <div id="voice-status">檢查語音中...</div>
+        <!-- 移除了 voice-status div -->
         <div id="welcome-screen" class="screen active">
-            <div class="event-title">國立彰化特殊教育學校身心障礙宣導周</div>
+            <div class="event-title">國立彰化特殊教育學校身心障礙宣導週</div>
             <div class="event-subtitle">視障組體驗</div>
             <h1>黑暗中的對話<br><span style="font-size:0.6em; color:#888;">六點輸入挑戰</span></h1>
             
@@ -590,6 +577,8 @@
                 <li><strong>聽寫挑戰：</strong> 聽點位提示，輸入後聽發音</li>
             </ol>
             
+            <!-- 移除了 voice-selector-container -->
+
             <button id="start-btn">開始挑戰</button>
         </div>
 
@@ -674,12 +663,11 @@
         const multiBrailleContainer = document.getElementById('multi-braille-container');
         const feedback = document.getElementById('feedback');
         const progressFill = document.getElementById('progress-fill');
-        const voiceStatus = document.getElementById('voice-status');
         
         // 過場動畫元素
         const transitionOverlay = document.getElementById('transition-overlay');
         const transitionLevelName = document.getElementById('transition-level-name');
-        const transitionMainTitle = document.getElementById('transition-main-title'); // 新增：主要標題元素
+        const transitionMainTitle = document.getElementById('transition-main-title');
 
         // --- 全域音訊環境 (Web Audio API) ---
         let audioCtx;
@@ -826,30 +814,25 @@
         function initVoices() {
             const voices = gameState.synth.getVoices();
             
-            // 尋找微軟自然語音
-            const msVoice = voices.find(v => 
-                (v.name.includes('Microsoft') && v.name.includes('HsiaoChen')) || 
-                (v.name.includes('Microsoft') && v.name.includes('YunJhe')) ||
-                (v.name.includes('Microsoft') && v.lang === 'zh-TW')
-            );
+            // 1. 第一優先：Microsoft Yating
+            let selectedVoice = voices.find(v => v.name.includes('Microsoft') && v.name.includes('Yating'));
 
-            // 尋找任何台灣繁體中文語音
-            const zhTwVoice = voices.find(v => v.lang === 'zh-TW');
+            // 2. 第二優先：其他微軟台灣中文語音 (例如 HsiaoChen, YunJhe)
+            if (!selectedVoice) {
+                selectedVoice = voices.find(v => v.name.includes('Microsoft') && v.lang === 'zh-TW');
+            }
 
-            if (msVoice) {
-                gameState.voice = msVoice;
-                gameState.usingMicrosoft = true;
-                voiceStatus.textContent = `使用微軟語音: ${msVoice.name.split(' ')[1] || 'Natural'}`;
-                voiceStatus.style.color = '#00ff88';
-            } else if (zhTwVoice) {
-                gameState.voice = zhTwVoice;
-                gameState.usingMicrosoft = false; 
-                voiceStatus.textContent = "未偵測到微軟自然語音 (使用備用方案)";
-                voiceStatus.style.color = '#ffeb3b';
+            // 3. 第三優先：任何系統台灣中文語音
+            if (!selectedVoice) {
+                selectedVoice = voices.find(v => v.lang === 'zh-TW');
+            }
+
+            if (selectedVoice) {
+                gameState.voice = selectedVoice;
+                gameState.usingMicrosoft = true; 
             } else {
                 gameState.voice = null;
                 gameState.usingMicrosoft = false;
-                voiceStatus.textContent = "使用 Google 雲端語音";
             }
         }
         
